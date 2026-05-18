@@ -1,23 +1,42 @@
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-PDF_PATH ="data/diabetes_guideline.pdf"  #path to our medical pdf
+from rag.loader import load_pdf, chunk_documents
 
-# this creates loader object 
-loader = PyPDFLoader(PDF_PATH) 
 
-#load Pdf pages in docs
-docs = loader.load() 
+# Path to medical PDF
+PDF_PATH = "data/diabetes_guideline.pdf"
 
-# Print total pages loaded
-print(f"Total pages loaded: {len(docs)}")
+# Step 1 — Load PDF
+documents = load_pdf(PDF_PATH)
 
-# Print sample content from first page
-print("\n--- FIRST PAGE CONTENT ---\n")
+print(f"Loaded {len(documents)} pages")
 
-print(docs[0].page_content)
 
-# Print metadata
-print("\n--- METADATA ---\n")
+# Step 2 — Chunk documents
+chunks = chunk_documents(documents)
 
-print(docs[0].metadata)
+print(f"Created {len(chunks)} chunks")
 
+
+# Step 3 — Load embedding model
+embedding_model = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+print("Embedding model loaded")
+
+
+# Step 4 — Create FAISS vector database
+vectorstore = FAISS.from_documents(
+    documents=chunks,
+    embedding=embedding_model
+)
+
+print("FAISS vector database created")
+
+
+# Step 5 — Save FAISS index locally
+vectorstore.save_local("faiss_index")
+
+print("FAISS index saved successfully")

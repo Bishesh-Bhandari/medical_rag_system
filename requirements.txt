@@ -3,3 +3,5 @@ langgraph==0.2.74
 pypdf
 langchain
 langchain-community
+sentence-transformers
+faiss-cpu
