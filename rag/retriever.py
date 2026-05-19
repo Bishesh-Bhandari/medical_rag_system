@@ -1,0 +1,2 @@
+from langchain_community.vectorstores import FAISS
+from ingest import embedding_model
