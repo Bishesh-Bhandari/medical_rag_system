@@ -5,7 +5,7 @@
 import streamlit as st
 import time
 import random
-from rag.retriever import get_similar_chunk
+from rag.rag_chain import answer_medical_query
 
 
 # =============================================================================
@@ -404,7 +404,7 @@ def render_chat_history():
 # USER INPUT
 # =============================================================================
 def handle_user_input():
-
+    
     user_input = st.chat_input(
         "Ask a medical question..."
     )
@@ -428,7 +428,7 @@ def handle_user_input():
 
                 time.sleep(1.2)
 
-                docs= get_similar_chunk(user_input)
+                docs = answer_medical_query(user_input)
                 
                 st.markdown(docs)
 
