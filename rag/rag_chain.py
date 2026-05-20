@@ -1,9 +1,13 @@
 import os
 
+from dotenv import load_dotenv
+
 from rag.retriever import get_similar_chunk
 
 
-DEFAULT_MODEL = "gemini-1.5-flash"
+load_dotenv()
+
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 FEW_SHOT_EXAMPLES = """
