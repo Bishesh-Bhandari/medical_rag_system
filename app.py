@@ -5,6 +5,7 @@
 import streamlit as st
 import time
 import random
+from rag.retriever import get_similar_chunk
 
 
 # =============================================================================
@@ -427,14 +428,16 @@ def handle_user_input():
 
                 time.sleep(1.2)
 
-                bot_reply = get_bot_response(user_input)
+                docs= get_similar_chunk(user_input)
+                
+                st.markdown(docs)
 
-            st.markdown(bot_reply)
+
 
         st.session_state.messages.append(
             {
                 "role": "assistant",
-                "content": bot_reply
+                "content": docs
             }
         )
 
