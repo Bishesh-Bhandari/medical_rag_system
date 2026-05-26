@@ -1,43 +1,62 @@
 from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
+from .loader import chunk, load_pdf
+from pathlib import Path
 
-#same embedding model used during ingestion if not then the similarity search break cause different embedding model have different dimensional 
-from ingest import embedding_model
-
-#constant
 FAISS_INDEX_PATH = "faiss_index"
 
-#now we need to load the vectorstore 
-def load_vectorstore():
+
+def get_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name = 'sentence-transformers/all-MiniLM-L6-v2'
+    )
+
+
+project_root = Path(__file__).resolve().parents[1]
+pdf_path = project_root / "data" / "diabetes_guideline.pdf"
+document = load_pdf(str(pdf_path))
+chunks = chunk(document)
+
+
+def build_faiss_index(chunks):
+    print("[retriever] Building FAISS index...")
+    embeddings = get_embeddings()
+    vectorstore = FAISS.from_documents(
+        chunks,
+        embedding = embeddings
+    )
+    vectorstore.save_local(FAISS_INDEX_PATH)
+    print("[retriever] FAISS index built and saved successfully")
+    return vectorstore
+
+
+def load_faiss_index():
 
     """
     Loads the saved FAISS vector database from disk.
     """
-
+    index_path = Path(FAISS_INDEX_PATH)
+    if not index_path.exists():
+        return FileNotFoundError(f"FAISS index not found at {FAISS_INDEX_PATH}." 
+                                 "Please run ingest.py first.")
+    
+    embeddings = get_embeddings()
     vectorstore = FAISS.load_local(
 
         folder_path=FAISS_INDEX_PATH,
 
-        embeddings=embedding_model,
+        embeddings=embeddings,
 
         allow_dangerous_deserialization=True
     )
 
     return vectorstore
 
-def retrieve_documents(query):
-    vectorstore =load_vectorstore()
-    results =vectorstore.similarity_search(query)
 
-    return results
-
-
-def get_similar_chunk(user_input):
-    docs =retrieve_documents(user_input)
-
-    response = ""
-
-    for doc in docs:
-        response += doc.page_content + "\n\n"
-
-    return response
-    
+def get_retreiver(k : int =3 ):
+    vectorestore = load_faiss_index()
+    retrieved = vectorestore.as_retriever(
+        search_type = "similarity",
+        search_kwargs = {"k": k}
+    )
+    return retrieved

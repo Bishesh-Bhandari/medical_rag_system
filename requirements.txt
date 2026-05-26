@@ -7,3 +7,6 @@ sentence-transformers
 faiss-cpu
 google-generativeai
 python-dotenv
+langchain-huggingface
+sentence-transformers
+langchain-ollama

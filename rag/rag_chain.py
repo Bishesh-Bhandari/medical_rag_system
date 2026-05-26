@@ -1,13 +1,9 @@
-import os
-
-from dotenv import load_dotenv
-
-from rag.retriever import get_similar_chunk
-
-
-load_dotenv()
-
-DEFAULT_MODEL = "gemini-2.5-flash"
+from .retriever import get_retreiver
+from langchain_ollama import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import chain
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables import RunnableWithMessageHistory, RunnableLambda
 
 
 FEW_SHOT_EXAMPLES = """
@@ -42,55 +38,109 @@ Retrieved context:
 {retrieved_context}
 
 User question:
-{user_query}
+{input}
 
 Final answer:
 """
 
+llm = ChatOllama(model = 'llama3')
 
-def build_medical_prompt(user_query: str, retrieved_context: str) -> str:
+def get_msg_content(msg):
+    return msg.content
+
+contextualize_system_prompt = (
+"""Given a chat history and the latest user question \
+which might reference context in the chat history, formulate a standalone question which can be understood \
+without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is."""
+)
+
+contextualize_prompt = ChatPromptTemplate.from_messages([
+    ("system", contextualize_system_prompt),
+    ("placeholder", "{chat_history}"),
+    ("human", "{input}"),
+])
+
+
+contextualize_chain = (
+    contextualize_prompt
+    | llm 
+    | get_msg_content 
+)
+
+qa_system_prompt = (
     """
-    Builds the final prompt sent to the LLM.
-    """
-    return PROMPT_TEMPLATE.format(
-        few_shot_examples=FEW_SHOT_EXAMPLES.strip(),
-        retrieved_context=retrieved_context.strip(),
-        user_query=user_query.strip(),
+   You are MedQuery AI, a medical information assistant for a student RAG project.
+
+Rules:
+- Answer only using the retrieved context when possible.
+- If the context is not enough, say that the available document context is limited.
+- Do not diagnose the user.
+- Do not prescribe medication or dosage.
+- Encourage the user to consult a qualified healthcare professional for personal medical advice.
+- Use clear, simple language.
+- Keep the answer concise but helpful.
+
+Few-shot examples:
+{few_shot_examples}
+
+Retrieved context:
+{retrieved_context}
+
+User question:
+{input}
+
+Final answer:
+"""
+)
+
+qa_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", qa_system_prompt),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+    ]
+)
+
+qa_chain = (
+    qa_prompt
+    | llm
+    | get_msg_content
+)
+
+# Define the overall chain the uses both the retrieved documents and the chat history to answer the question
+
+db_retriever = get_retreiver()
+
+def history_aware_qa(input):
+    # Rephrase the question if needed
+    if input.get('chat_history'):
+        question = contextualize_chain.invoke(input)
+    else:
+        question = input['input']
+
+    # Get context from the retriever
+    context = db_retriever.invoke(question)
+    # print(context)
+    
+    # Get the final answer
+    return qa_chain.invoke({
+        **input,
+         "retrieved_context": context,
+        "few_shot_examples": FEW_SHOT_EXAMPLES
+    })
+
+
+chat_history_for_chain = InMemoryChatMessageHistory()
+qa_with_history = RunnableWithMessageHistory(
+    RunnableLambda(history_aware_qa),
+    lambda _: chat_history_for_chain,
+    input_messages_key="input",
+    history_messages_key="chat_history",
+)
+
+def chatbot_response(user_input):
+    result = qa_with_history.invoke(
+        {"input": user_input},
+        config={"configurable": {"session_id": "123"}},
     )
-
-
-def call_gemini_llm(prompt: str) -> str:
-    """
-    Calls Gemini using GEMINI_API_KEY from the environment.
-    """
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
-        return (
-            "Gemini is not configured yet. Add your free Gemini API key as "
-            "`GEMINI_API_KEY` in your environment, then restart the app."
-        )
-
-    try:
-        import google.generativeai as genai
-    except ImportError:
-        return (
-            "The Gemini package is not installed yet. Run "
-            "`pip install google-generativeai` and restart the app."
-        )
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(DEFAULT_MODEL)
-    response = model.generate_content(prompt)
-
-    return response.text
-
-
-def answer_medical_query(user_query: str) -> str:
-    """
-    Retrieves relevant FAISS chunks, builds the prompt, and returns the LLM answer.
-    """
-    retrieved_context = get_similar_chunk(user_query)
-    prompt = build_medical_prompt(user_query, retrieved_context)
-
-    return call_gemini_llm(prompt)
+    return f"{result}"

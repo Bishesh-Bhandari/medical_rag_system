@@ -1,33 +1,25 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-
-def load_pdf(pdf_path):
-    """
-    Loads PDF and returns LangChain Document objects.
-    """
-
-    # Create PDF loader
-    loader = PyPDFLoader(pdf_path)
-
-    # Load all pages
+def load_pdf(path):
+    loader = PyPDFLoader(path)
     documents = loader.load()
+    print(f"[loader] Loaded {len(documents)}")
+    return documents 
 
-    return documents
-
-
-def chunk_documents(documents):
-    """
-    Splits loaded documents into smaller chunks.
-    """
-
-    # Create text splitter
+def chunk(documents, chunk_size = 500, chunk_overlap = 50):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
-    )
+        chunk_size = chunk_size,
+        chunk_overlap = chunk_overlap)
 
-    # Split documents into chunks
     chunks = text_splitter.split_documents(documents)
+    print(f"[loader] Created {len(chunks)} chunks")
+    return chunks
 
+def load_and_split(path, 
+                    chunk_size = 500,
+                    chunk_overlap = 50):
+    
+    documents = load_pdf(path)
+    chunks = chunk(documents, chunk_size, chunk_overlap)
     return chunks

@@ -1,43 +1,39 @@
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+"""
+ingest.py
+Run this once to load the PDF, split it into chunks,
+and build the FAISS index on disk.
 
-from rag.loader import load_pdf, chunk_documents
+Usage:
+    python ingest.py
+"""
 
-
-
-
-
-# Step 3 — Load embedding model
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
-
-print("Embedding model loaded")
-
-if __name__ == "__main__":
-# Path to medical PDF
-    PDF_PATH = "data/diabetes_guideline.pdf"
-
-    # Step 1 — Load PDF
-    documents = load_pdf(PDF_PATH)
-
-    print(f"Loaded {len(documents)} pages")
+from rag.loader import load_and_split
+from rag.retriever import build_faiss_index
 
 
-    # Step 2 — Chunk documents
-    chunks = chunk_documents(documents)
+PDF_PATH = "data/diabetes_.pdf"
 
-    print(f"Created {len(chunks)} chunks")
-    # Step 4 — Create FAISS vector database
-    vectorstore = FAISS.from_documents(
-        documents=chunks,
-        embedding=embedding_model
+
+def main() -> None:
+    print("=" * 50)
+    print("MediBot — Ingestion Pipeline")
+    print("=" * 50)
+
+    # Step 1: Load and split PDF
+    print("\n[Step 1] Loading and splitting PDF...")
+    chunks = load_and_split(
+        path=PDF_PATH,
+        chunk_size=500,
+        chunk_overlap=50,
     )
 
-    print("FAISS vector database created")
+    # Step 2: Build and save FAISS index
+    print("\n[Step 2] Building FAISS index...")
+    build_faiss_index(chunks)
+
+    print("\n[Done] Ingestion complete. You can now run the app.")
+    print("=" * 50)
 
 
-    # Step 5 — Save FAISS index locally
-    vectorstore.save_local("faiss_index")
-
-    print("FAISS index saved successfully")
+if __name__ == "__main__":
+    main()
