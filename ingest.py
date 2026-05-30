@@ -11,7 +11,7 @@ from rag.loader import load_and_split
 from rag.retriever import build_faiss_index
 
 
-PDF_PATH = "data/diabetes_.pdf"
+PDF_PATH = "data/diabetes_guideline.pdf"
 
 
 def main() -> None:

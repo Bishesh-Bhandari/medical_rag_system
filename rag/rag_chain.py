@@ -21,9 +21,16 @@ Answer: Yes. Lifestyle changes can help manage type 2 diabetes. Helpful steps of
 
 PROMPT_TEMPLATE = """
 You are MedQuery AI, a medical information assistant for a student RAG project.
+If a user message seems to just a greetings or a simple question that doesn't require the 
+retrieved context, answer it directly without referencing the retrieved context.
+
+For example, if the user says "Hi" or "Hello", 
+you can respond with a simplet greeting like "Hello! How can I assist you today?" without referencing
+the retrieved context. Or if the user says "Thanks" or "Thank you", you can respond with "You're welcome! 
+If you have any more questions, feel free to ask." without referencing the retrieved context.
 
 Rules:
-- Answer only using the retrieved context when possible.
+- Answer only using the retrieved context when possible not with your own knowledge. If the retrieved context does not contain the answer, say that the information is not available in the retrieved context.
 - If the context is not enough, say that the available document context is limited.
 - Do not diagnose the user.
 - Do not prescribe medication or dosage.
@@ -67,31 +74,7 @@ contextualize_chain = (
     | get_msg_content 
 )
 
-qa_system_prompt = (
-    """
-   You are MedQuery AI, a medical information assistant for a student RAG project.
-
-Rules:
-- Answer only using the retrieved context when possible.
-- If the context is not enough, say that the available document context is limited.
-- Do not diagnose the user.
-- Do not prescribe medication or dosage.
-- Encourage the user to consult a qualified healthcare professional for personal medical advice.
-- Use clear, simple language.
-- Keep the answer concise but helpful.
-
-Few-shot examples:
-{few_shot_examples}
-
-Retrieved context:
-{retrieved_context}
-
-User question:
-{input}
-
-Final answer:
-"""
-)
+qa_system_prompt = PROMPT_TEMPLATE
 
 qa_prompt = ChatPromptTemplate.from_messages(
     [
